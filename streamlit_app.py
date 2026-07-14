@@ -1,6 +1,93 @@
+import random
 import streamlit as st
 
-st.title("🎈 My new app")
-st.write(
-    "Let's start building! For help and inspiration, head over to [docs.streamlit.io](https://docs.streamlit.io/)."
-)
+st.set_page_config(page_title="영단어 게임", page_icon="📚")
+
+WORD_BANK = [
+    {"word": "friend", "meaning": "친구"},
+    {"word": "beautiful", "meaning": "아름다운"},
+    {"word": "travel", "meaning": "여행하다"},
+    {"word": "library", "meaning": "도서관"},
+    {"word": "important", "meaning": "중요한"},
+    {"word": "exercise", "meaning": "운동"},
+    {"word": "dangerous", "meaning": "위험한"},
+    {"word": "imagine", "meaning": "상상하다"},
+    {"word": "decide", "meaning": "결정하다"},
+    {"word": "celebrate", "meaning": "축하하다"},
+]
+
+
+def make_questions():
+    questions = []
+    selected = random.sample(WORD_BANK, 8)
+    for item in selected:
+        distractors = [w["word"] for w in WORD_BANK if w["word"] != item["word"]]
+        options = [item["word"], *random.sample(distractors, 3)]
+        random.shuffle(options)
+        questions.append(
+            {
+                "word": item["word"],
+                "meaning": item["meaning"],
+                "options": options,
+                "answer": item["word"],
+            }
+        )
+    return questions
+
+
+def reset_game():
+    st.session_state.questions = make_questions()
+    st.session_state.index = 0
+    st.session_state.score = 0
+    st.session_state.show_result = False
+    st.session_state.finished = False
+    st.session_state.feedback = ""
+
+
+if "questions" not in st.session_state:
+    reset_game()
+
+st.title("📚 중학생 영단어 게임")
+st.write("뜻을 보고 영어 단어를 고르는 간단한 퀴즈입니다. 재미있게 공부해 보세요!")
+
+st.button("🔄 새 게임 시작", on_click=reset_game)
+
+if st.session_state.finished:
+    st.success(f"게임 끝! 점수: {st.session_state.score}/{len(st.session_state.questions)}")
+    st.write("다시 시작해서 더 많이 맞혀 보세요!")
+else:
+    current = st.session_state.questions[st.session_state.index]
+    st.progress((st.session_state.index + 1) / len(st.session_state.questions))
+    st.subheader(f"문제 {st.session_state.index + 1}")
+    st.write(f"뜻: {current['meaning']}")
+
+    if not st.session_state.show_result:
+        choice = st.radio(
+            "정답을 선택하세요",
+            current["options"],
+            key=f"choice_{st.session_state.index}",
+        )
+
+        if st.button("✅ 정답 확인"):
+            if choice is None:
+                st.warning("답을 선택해 주세요.")
+            else:
+                if choice == current["answer"]:
+                    st.session_state.score += 1
+                    st.session_state.feedback = "정답입니다! 👍"
+                else:
+                    st.session_state.feedback = f"아쉽네요. 정답은 {current['answer']}입니다."
+                st.session_state.show_result = True
+    else:
+        if st.session_state.feedback.startswith("정답"):
+            st.success(st.session_state.feedback)
+        else:
+            st.error(st.session_state.feedback)
+
+        if st.session_state.index < len(st.session_state.questions) - 1:
+            if st.button("➡️ 다음 문제"):
+                st.session_state.index += 1
+                st.session_state.show_result = False
+        else:
+            if st.button("🏁 결과 보기"):
+                st.session_state.finished = True
